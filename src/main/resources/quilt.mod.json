@@ -1,25 +1,26 @@
 {
 	"schema_version": 1,
 	"quilt_loader": {
-		"group": "com.example",
-		"id": "example_mod",
+		"group": "foundationgames",
+		"id": "blasttravel",
 		"version": "${version}",
 		"metadata": {
-			"name": "Mod Name",
-			"description": "A short description of your mod.",
+			"name": "Blast Travel",
+			"description": "Cannon-based player transport",
 			"contributors": {
-				"Your name here": "Owner"
+				"FoundationGames": "Owner"
 			},
 			"contact": {
-				"homepage": "https://example.com/",
-				"issues": "https://github.com/QuiltMC/quilt-template-mod/issues",
-				"sources": "https://github.com/QuiltMC/quilt-template-mod"
+				"homepage": "https://github.com/FoundationGames/BlastTravel",
+				"issues": "https://github.com/FoundationGames/BlastTravel/issues",
+				"sources": "https://github.com/FoundationGames/BlastTravel"
 			},
-			"icon": "assets/example_mod/icon.png"
+			"icon": "assets/blasttravel/icon.png"
 		},
 		"intermediate_mappings": "net.fabricmc:intermediary",
 		"entrypoints": {
-			"init": "com.example.example_mod.ExampleMod"
+			"init": "foundationgames.blasttravel.BlastTravel",
+			"client_init": "foundationgames.blasttravel.client.BlastTravelClient"
 		},
 		"depends": [
 			{
@@ -36,5 +37,5 @@
 			}
 		]
 	},
-	"mixin": "example_mod.mixins.json"
+	"mixin": "blasttravel.mixins.json"
 }
