@@ -3,6 +3,7 @@ package foundationgames.blasttravel;
 import foundationgames.blasttravel.entity.CannonEntity;
 import foundationgames.blasttravel.item.CannonItem;
 import foundationgames.blasttravel.screen.CannonScreenHandler;
+import foundationgames.blasttravel.util.BTNetworking;
 import net.fabricmc.fabric.api.object.builder.v1.entity.FabricEntityTypeBuilder;
 import net.minecraft.entity.EntityDimensions;
 import net.minecraft.entity.EntityType;
@@ -34,6 +35,7 @@ public class BlastTravel implements ModInitializer {
 
 	@Override
 	public void onInitialize(ModContainer mod) {
+		BTNetworking.init();
 	}
 
 	public static Identifier id(String path) {

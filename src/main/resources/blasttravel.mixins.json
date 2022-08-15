@@ -4,11 +4,14 @@
   "package": "foundationgames.blasttravel.mixin",
   "compatibilityLevel": "JAVA_17",
   "mixins": [
+    "LivingEntityAccess",
+    "PlayerEntityMixin"
   ],
   "client": [
     "ClientPlayerEntityMixin",
-    "InGameHudMixin",
     "InGameHudAccess",
+    "InGameHudMixin",
+    "PlayerEntityModelMixin",
     "PlayerEntityRendererMixin"
   ],
   "injectors": {

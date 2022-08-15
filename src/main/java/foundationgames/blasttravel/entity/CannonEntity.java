@@ -2,6 +2,8 @@ package foundationgames.blasttravel.entity;
 
 import foundationgames.blasttravel.BlastTravel;
 import foundationgames.blasttravel.screen.CannonScreenHandler;
+import foundationgames.blasttravel.util.BTNetworking;
+import foundationgames.blasttravel.util.PlayerEntityDuck;
 import it.unimi.dsi.fastutil.objects.Object2IntMap;
 import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
 import net.fabricmc.api.EnvType;
@@ -23,6 +25,7 @@ import net.minecraft.nbt.NbtCompound;
 import net.minecraft.network.Packet;
 import net.minecraft.network.packet.s2c.play.EntitySpawnS2CPacket;
 import net.minecraft.screen.SimpleNamedScreenHandlerFactory;
+import net.minecraft.server.world.ServerWorld;
 import net.minecraft.text.Text;
 import net.minecraft.util.ActionResult;
 import net.minecraft.util.Hand;
@@ -47,7 +50,12 @@ public class CannonEntity extends Entity {
 	public static final TrackedData<Integer> WRAPPING = DataTracker.registerData(CannonEntity.class, TrackedDataHandlerRegistry.INTEGER);
 	public static final TrackedData<Boolean> CHAINED = DataTracker.registerData(CannonEntity.class, TrackedDataHandlerRegistry.BOOLEAN);
 
+	public static final int MAX_ANIMATION = 12;
+
 	private boolean chained;
+	private boolean firing;
+
+	private int animation = 0;
 
 	private final SimpleInventory inventory = new SimpleInventory(3) {
 		@Override
@@ -67,6 +75,10 @@ public class CannonEntity extends Entity {
 
 	@Override
 	public void tick() {
+		if (this.firing && !this.hasPassengers()) {
+			this.firing = false;
+		}
+
 		super.tick();
 
 		if (!this.chained && this.getPrimaryPassenger() instanceof PlayerEntity player) {
@@ -80,6 +92,10 @@ public class CannonEntity extends Entity {
 			} else {
 				this.chained = this.dataTracker.get(CHAINED);
 			}
+		}
+
+		if (this.animation > 0) {
+			this.animation--;
 		}
 	}
 
@@ -144,6 +160,41 @@ public class CannonEntity extends Entity {
 		return super.handleAttack(attacker);
 	}
 
+	@Override
+	public void updateTrackedPositionAndAngles(double x, double y, double z, float yaw, float pitch, int interpolationSteps, boolean interpolate) {
+		if (!this.world.isClient() && !this.hasPassengers()) {
+			super.updateTrackedPositionAndAngles(x, y, z, yaw, pitch, interpolationSteps, interpolate);
+		}
+	}
+
+	public void handleInput(boolean firing) {
+		if (this.world.isClient()) {
+			if (firing && !this.firing) {
+				BTNetworking.c2sRequestFire(this);
+			}
+			this.firing = firing;
+		}
+	}
+
+	public void tryFire() {
+		if (this.world instanceof ServerWorld world) {
+			var gunpowder = this.inventory.getStack(0);
+			if (gunpowder.isOf(Items.GUNPOWDER) && gunpowder.getCount() > 0 && this.hasPassengers()) {
+				if (this.getPrimaryPassenger() instanceof PlayerEntity player) {
+					player.stopRiding();
+					((PlayerEntityDuck)player).blasttravel$setCannonFlight(true);
+
+					world.getPlayers().forEach(to -> BTNetworking.s2cLaunchPlayer(to, this,
+							player, getRotationVector().multiply(Math.sqrt(gunpowder.getCount()) * 0.6)));
+				}
+			}
+		}
+	}
+
+	public void animate() {
+		this.animation = MAX_ANIMATION;
+	}
+
 	protected int getWrappingId() {
 		return this.dataTracker.get(WRAPPING);
 	}
@@ -158,6 +209,11 @@ public class CannonEntity extends Entity {
 
 	public boolean hasChains() {
 		return this.chained;
+	}
+
+	public float getAnimation(float tickDelta) {
+		float anim = Math.max(0, this.animation - tickDelta);
+		return anim / MAX_ANIMATION;
 	}
 
 	public static boolean isValidWrappingStack(ItemStack stack) {

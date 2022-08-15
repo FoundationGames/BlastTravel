@@ -11,7 +11,6 @@ import net.minecraft.client.render.entity.EntityRenderer;
 import net.minecraft.client.render.entity.EntityRendererFactory;
 import net.minecraft.client.render.entity.model.EntityModelLayer;
 import net.minecraft.client.util.math.MatrixStack;
-import net.minecraft.entity.vehicle.MinecartEntity;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.math.MathHelper;
 import net.minecraft.util.math.Vec3f;
@@ -81,6 +80,10 @@ public class CannonEntityRenderer extends EntityRenderer<CannonEntity> {
 
 		matrices.multiply(Vec3f.POSITIVE_Z.getDegreesQuaternion(180));
 		matrices.multiply(Vec3f.POSITIVE_Y.getRadialQuaternion(yaw));
+
+		float anim = entity.getAnimation(tickDelta);
+		matrices.multiply(Vec3f.POSITIVE_X.getDegreesQuaternion(
+				-10 * (-2 * (anim*anim*anim*anim*anim*anim*anim*anim) + 2 * (anim*anim)))); // pow() goes the cannon
 
 		this.root.render(matrices, vertexConsumers.getBuffer(RenderLayer.getEntityCutout(this.getTexture(entity))), light, OverlayTexture.DEFAULT_UV);
 
