@@ -8,6 +8,8 @@ import it.unimi.dsi.fastutil.objects.Object2IntMap;
 import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
+import net.minecraft.block.Blocks;
+import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.network.AbstractClientPlayerEntity;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityType;
@@ -24,13 +26,19 @@ import net.minecraft.item.PickaxeItem;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.network.Packet;
 import net.minecraft.network.packet.s2c.play.EntitySpawnS2CPacket;
+import net.minecraft.particle.ParticleTypes;
 import net.minecraft.screen.SimpleNamedScreenHandlerFactory;
 import net.minecraft.server.world.ServerWorld;
+import net.minecraft.sound.SoundCategory;
+import net.minecraft.sound.SoundEvents;
 import net.minecraft.text.Text;
 import net.minecraft.util.ActionResult;
+import net.minecraft.util.Formatting;
 import net.minecraft.util.Hand;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.ItemScatterer;
+import net.minecraft.util.math.MathHelper;
+import net.minecraft.util.math.Vec3d;
 import net.minecraft.world.World;
 import org.jetbrains.annotations.Nullable;
 
@@ -42,6 +50,7 @@ public class CannonEntity extends Entity {
 	private static final Object2IntMap<Item> ITEM_TO_WRAPPING = new Object2IntOpenHashMap<>();
 
 	public static final Text UI_TITLE = Text.translatable("container.blasttravel.cannon");
+	public static final Text NO_GUNPOWDER_DIALOG = Text.translatable("dialog.blasttravel.no_gunpowder").formatted(Formatting.RED);
 
 	public static final Wrapping NONE = new Wrapping(Items.AIR, BlastTravel.id("textures/entity/cannon/regular.png")).register();
 	public static final Wrapping MOSS = new Wrapping(Items.MOSS_BLOCK, BlastTravel.id("textures/entity/cannon/mossy.png")).register();
@@ -142,7 +151,7 @@ public class CannonEntity extends Entity {
 
 	@Override
 	public boolean handleAttack(Entity attacker) {
-		if (attacker instanceof PlayerEntity player) {
+		if (attacker instanceof PlayerEntity player && player != this.getPrimaryPassenger()) {
 			if (player.canModifyBlocks() &&
 					(player.isCreative() || player.getStackInHand(Hand.MAIN_HAND).getItem() instanceof PickaxeItem)) {
 				if (!this.world.isClient()) {
@@ -153,11 +162,17 @@ public class CannonEntity extends Entity {
 
 					this.remove(RemovalReason.KILLED);
 				}
+				this.world.playSound(null, this.getBlockPos(), SoundEvents.BLOCK_STONE_BREAK, SoundCategory.BLOCKS,
+						1, 0.8f);
+				this.world.addBlockBreakParticles(this.getBlockPos(), Blocks.ANVIL.getDefaultState());
+
 				return true;
 			}
 		}
 
-		return super.handleAttack(attacker);
+		this.world.playSound(null, this.getBlockPos(), SoundEvents.BLOCK_STONE_HIT, SoundCategory.BLOCKS,
+				1, 0.5f);
+		return true;
 	}
 
 	@Override
@@ -179,15 +194,42 @@ public class CannonEntity extends Entity {
 	public void tryFire() {
 		if (this.world instanceof ServerWorld world) {
 			var gunpowder = this.inventory.getStack(0);
-			if (gunpowder.isOf(Items.GUNPOWDER) && gunpowder.getCount() > 0 && this.hasPassengers()) {
+			if (gunpowder.isOf(Items.GUNPOWDER) && gunpowder.getCount() > 0) {
 				if (this.getPrimaryPassenger() instanceof PlayerEntity player) {
+					var vel = getRotationVector().multiply(Math.sqrt(gunpowder.getCount()) * 0.6);
 					player.stopRiding();
+					player.setVelocity(vel);
 					((PlayerEntityDuck)player).blasttravel$setCannonFlight(true);
 
-					world.getPlayers().forEach(to -> BTNetworking.s2cLaunchPlayer(to, this,
-							player, getRotationVector().multiply(Math.sqrt(gunpowder.getCount()) * 0.6)));
+					this.world.playSound(null, this.getBlockPos(), SoundEvents.ENTITY_GENERIC_EXPLODE, SoundCategory.BLOCKS, 1, 1);
+					world.getPlayers().forEach(to -> BTNetworking.s2cFireCannon(to, this,
+							player, vel));
 				}
+			} else if (this.getPrimaryPassenger() instanceof PlayerEntity player) {
+				player.stopRiding();
+				player.sendMessage(NO_GUNPOWDER_DIALOG, true);
 			}
+		}
+	}
+
+	public void onFiredClient() {
+		if (!world.isClient()) {
+			return;
+		}
+
+		this.animate();
+
+		final int ringParticles = 18;
+		for (int i = 0; i < ringParticles; i++) {
+			double angle = (2d / ringParticles) * Math.PI * i;
+			var vec = new Vec3d(Math.sin(angle), Math.cos(angle), 0)
+					.rotateX(-this.getPitch() * MathHelper.RADIANS_PER_DEGREE).rotateY(-this.getYaw() * MathHelper.RADIANS_PER_DEGREE);
+
+			var pos = this.getPos().add(0, 0.75, 0).add(this.getRotationVector().multiply(1.69f)).add(vec.multiply(0.42f));
+			var vel = vec.multiply(0.013);
+
+			MinecraftClient.getInstance().particleManager.addParticle(ParticleTypes.CAMPFIRE_COSY_SMOKE,
+					pos.x, pos.y, pos.z, vel.x, vel.y, vel.z);
 		}
 	}
 
@@ -216,6 +258,10 @@ public class CannonEntity extends Entity {
 		return anim / MAX_ANIMATION;
 	}
 
+	public int getAnimationTick() {
+		return this.animation;
+	}
+
 	public static boolean isValidWrappingStack(ItemStack stack) {
 		return ITEM_TO_WRAPPING.containsKey(stack.getItem());
 	}
@@ -240,6 +286,12 @@ public class CannonEntity extends Entity {
 				}
 			}
 		}
+	}
+
+	@Nullable
+	@Override
+	public ItemStack getPickBlockStack() {
+		return new ItemStack(BlastTravel.CANNON_ITEM);
 	}
 
 	@Nullable

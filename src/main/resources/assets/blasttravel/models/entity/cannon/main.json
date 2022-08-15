@@ -593,6 +593,34 @@
                         }
                     }
                 },
+                "fire": {
+                    "transform": {
+                        "origin": [
+                            0,
+                            -11,
+                            0
+                        ]
+                    },
+                    "cuboids": [
+                        {
+                            "offset": [
+                                -3,
+                                -50,
+                                -3
+                            ],
+                            "dimensions": [
+                                6,
+                                26,
+                                6
+                            ],
+                            "uv": [
+                                0,
+                                0
+                            ]
+                        }
+                    ],
+                    "children": {}
+                },
                 "player_head": {
                     "transform": {
                         "origin": [

@@ -19,9 +19,9 @@ public enum BTNetworking {;
 		ClientPlayNetworking.send(BlastTravel.id("request_fire"), buf);
 	}
 
-	public static void s2cLaunchPlayer(ServerPlayerEntity to, CannonEntity launcher, PlayerEntity launched, Vec3d velocity) {
+	public static void s2cFireCannon(ServerPlayerEntity to, CannonEntity cannon, PlayerEntity launched, Vec3d velocity) {
 		var buf = PacketByteBufs.create();
-		buf.writeInt(launcher.getId());
+		buf.writeInt(cannon.getId());
 		buf.writeInt(launched.getId());
 		buf.writeDouble(velocity.x);
 		buf.writeDouble(velocity.y);
@@ -56,7 +56,7 @@ public enum BTNetworking {;
 
 				entity = client.world.getEntityById(cannonId);
 				if (entity instanceof CannonEntity cannon) {
-					cannon.animate();
+					cannon.onFiredClient();
 				}
 			});
 		});

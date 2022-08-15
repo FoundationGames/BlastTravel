@@ -5,6 +5,8 @@ import net.minecraft.entity.SpawnReason;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemUsageContext;
 import net.minecraft.server.world.ServerWorld;
+import net.minecraft.sound.SoundCategory;
+import net.minecraft.sound.SoundEvents;
 import net.minecraft.util.ActionResult;
 
 public class CannonItem extends Item {
@@ -20,6 +22,7 @@ public class CannonItem extends Item {
 				context.getStack().decrement(1);
 			}
 		}
+		context.getWorld().playSound(null, context.getBlockPos(), SoundEvents.BLOCK_STONE_PLACE, SoundCategory.BLOCKS, 1, 0.8f);
 
 		return ActionResult.success(context.getWorld().isClient());
 	}

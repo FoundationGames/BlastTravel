@@ -1,5 +1,8 @@
 {
     "container.blasttravel.cannon": "Cannon",
+    "item.blasttravel.cannon": "Cannon",
+    "entity.blasttravel.cannon": "Cannon",
 
-    "item.blasttravel.cannon": "Cannon"
+    "dialog.blasttravel.no_gunpowder": "Cannon has no gunpowder!",
+    "death.attack.blasttravel.cannon": "%s was knocked out by a flying %s"
 }

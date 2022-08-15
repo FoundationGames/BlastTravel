@@ -18,6 +18,22 @@ import net.minecraft.util.math.Vec3f;
 public class CannonEntityRenderer extends EntityRenderer<CannonEntity> {
 	public static final EntityModelLayer MODEL = new EntityModelLayer(BlastTravel.id("cannon"), "main");
 
+	private static final Identifier[] FIRE_TEXTURES = {
+			BlastTravel.id("textures/entity/cannon_fire/frame_0.png"),
+			BlastTravel.id("textures/entity/cannon_fire/frame_1.png"),
+			BlastTravel.id("textures/entity/cannon_fire/frame_2.png"),
+			BlastTravel.id("textures/entity/cannon_fire/frame_3.png"),
+			BlastTravel.id("textures/entity/cannon_fire/frame_4.png")
+	};
+
+	private static final Identifier[] SMOKE_TEXTURES = {
+			BlastTravel.id("textures/entity/cannon_smoke/frame_0.png"),
+			BlastTravel.id("textures/entity/cannon_smoke/frame_1.png"),
+			BlastTravel.id("textures/entity/cannon_smoke/frame_2.png"),
+			BlastTravel.id("textures/entity/cannon_smoke/frame_3.png"),
+			BlastTravel.id("textures/entity/cannon_smoke/frame_4.png")
+	};
+
 	private final ModelPart root;
 	private final ModelPart leftWheel;
 	private final ModelPart rightWheel;
@@ -25,6 +41,7 @@ public class CannonEntityRenderer extends EntityRenderer<CannonEntity> {
 	private final ModelPart chains;
 	private final ModelPart fuse;
 	private final ModelPart playerHead;
+	private final ModelPart fire;
 
 	public CannonEntityRenderer(EntityRendererFactory.Context context) {
 		super(context);
@@ -35,6 +52,7 @@ public class CannonEntityRenderer extends EntityRenderer<CannonEntity> {
 		this.rightWheel = this.root.getChild("right_wheel");
 		this.cannon = this.root.getChild("cannon");
 		this.playerHead = this.root.getChild("player_head");
+		this.fire = this.root.getChild("fire");
 
 		this.chains = this.cannon.getChild("chains");
 		this.fuse = this.cannon.getChild("fuse");
@@ -50,6 +68,7 @@ public class CannonEntityRenderer extends EntityRenderer<CannonEntity> {
 		this.playerHead.visible = false;
 		this.fuse.visible = true;
 		this.chains.visible = false;
+		this.fire.visible = false;
 	}
 
 	@Override
@@ -83,9 +102,23 @@ public class CannonEntityRenderer extends EntityRenderer<CannonEntity> {
 
 		float anim = entity.getAnimation(tickDelta);
 		matrices.multiply(Vec3f.POSITIVE_X.getDegreesQuaternion(
-				-10 * (-2 * (anim*anim*anim*anim*anim*anim*anim*anim) + 2 * (anim*anim)))); // pow() goes the cannon
+				-5 * (-2 * (anim*anim*anim*anim*anim*anim*anim*anim) + 2 * (anim*anim)))); // pow() goes the cannon
 
 		this.root.render(matrices, vertexConsumers.getBuffer(RenderLayer.getEntityCutout(this.getTexture(entity))), light, OverlayTexture.DEFAULT_UV);
+
+		int tick = Math.max(0, (CannonEntity.MAX_ANIMATION - entity.getAnimationTick()) - 3);
+		if (tick <= 7) {
+			this.fire.visible = true;
+			this.fire.pitch = this.cannon.pitch;
+		}
+		if (tick <= 4) {
+			this.fire.render(matrices, vertexConsumers.getBuffer(RenderLayer.getEyes(FIRE_TEXTURES[tick])), light, OverlayTexture.DEFAULT_UV);
+		}
+		tick -= 3;
+		if (tick >= 0 && tick <= 4) {
+			this.fire.render(matrices, vertexConsumers.getBuffer(RenderLayer.getEntityTranslucent(SMOKE_TEXTURES[tick])), light, OverlayTexture.DEFAULT_UV,
+					1, 1, 1, 0.9f - (0.07f * tick));
+		}
 
 		var player = entity.getClientPlayer();
 		if (renderCannon && player != null) {
