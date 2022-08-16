@@ -43,6 +43,7 @@ import net.minecraft.world.World;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 
 public class CannonEntity extends Entity {
@@ -53,7 +54,9 @@ public class CannonEntity extends Entity {
 	public static final Text NO_GUNPOWDER_DIALOG = Text.translatable("dialog.blasttravel.no_gunpowder").formatted(Formatting.RED);
 
 	public static final Wrapping NONE = new Wrapping(Items.AIR, BlastTravel.id("textures/entity/cannon/regular.png")).register();
-	public static final Wrapping MOSS = new Wrapping(Items.MOSS_BLOCK, BlastTravel.id("textures/entity/cannon/mossy.png")).register();
+	public static final Wrapping GOLDEN = new Wrapping(Items.GOLD_BLOCK, BlastTravel.id("textures/entity/cannon/golden.png")).register();
+	public static final Wrapping MOSSY = new Wrapping(Items.MOSS_BLOCK, BlastTravel.id("textures/entity/cannon/mossy.png")).register();
+	public static final Wrapping LAZULI = new Wrapping(Items.LAPIS_BLOCK, BlastTravel.id("textures/entity/cannon/lazuli.png")).register();
 	public static final Wrapping AMETHYST = new Wrapping(Items.AMETHYST_BLOCK, BlastTravel.id("textures/entity/cannon/amethyst.png")).register();
 
 	public static final TrackedData<Integer> WRAPPING = DataTracker.registerData(CannonEntity.class, TrackedDataHandlerRegistry.INTEGER);
@@ -99,12 +102,18 @@ public class CannonEntity extends Entity {
 			if (!world.isClient()) {
 				this.dataTracker.set(CHAINED, this.chained);
 			} else {
-				this.chained = this.dataTracker.get(CHAINED);
+				setChained(this.dataTracker.get(CHAINED));
 			}
 		}
 
 		if (this.animation > 0) {
 			this.animation--;
+		}
+
+		if (this.world.isClient() && this.hasPassengers()) {
+			var pos = this.getPos().add(0, 0.75, 0).add(this.getRotationVector(this.getPitch() - 90, this.getYaw()).multiply(0.75));
+			MinecraftClient.getInstance().particleManager.addParticle(ParticleTypes.SMOKE,
+					pos.x, pos.y, pos.z, 0, 0, 0);
 		}
 	}
 
@@ -208,6 +217,8 @@ public class CannonEntity extends Entity {
 			} else if (this.getPrimaryPassenger() instanceof PlayerEntity player) {
 				player.stopRiding();
 				player.sendMessage(NO_GUNPOWDER_DIALOG, true);
+
+				this.world.playSound(null, this.getBlockPos(), SoundEvents.ENTITY_GENERIC_EXTINGUISH_FIRE, SoundCategory.BLOCKS, 1, 0.8f);
 			}
 		}
 	}
@@ -266,6 +277,19 @@ public class CannonEntity extends Entity {
 		return ITEM_TO_WRAPPING.containsKey(stack.getItem());
 	}
 
+	public static Collection<Wrapping> allWrappings() {
+		return ID_TO_WRAPPING;
+	}
+
+	private void setChained(boolean chained) {
+		if (chained != this.chained) {
+			this.world.playSound(null, this.getBlockPos(), SoundEvents.ITEM_ARMOR_EQUIP_CHAIN,
+					SoundCategory.BLOCKS, 1, 1.2f);
+		}
+
+		this.chained = chained;
+	}
+
 	@Environment(EnvType.CLIENT)
 	public @Nullable AbstractClientPlayerEntity getClientPlayer() {
 		return this.getPrimaryPassenger() instanceof AbstractClientPlayerEntity player ? player : null;
@@ -280,7 +304,7 @@ public class CannonEntity extends Entity {
 			for (int slot = 0; slot < this.inventory.size(); slot++) {
 				var item = this.inventory.getStack(slot).getItem();
 				if (slot == 1) {
-					this.chained = item == Items.CHAIN;
+					setChained(item == Items.CHAIN);
 				} else if (slot == 2) {
 					this.setWrappingId(ITEM_TO_WRAPPING.getOrDefault(item, 0));
 				}

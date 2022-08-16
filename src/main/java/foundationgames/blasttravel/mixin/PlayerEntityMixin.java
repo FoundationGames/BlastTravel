@@ -10,6 +10,8 @@ import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.damage.DamageSource;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.particle.ParticleTypes;
+import net.minecraft.sound.SoundCategory;
+import net.minecraft.sound.SoundEvents;
 import net.minecraft.util.TypeFilter;
 import net.minecraft.util.math.MathHelper;
 import net.minecraft.util.math.Vec3d;
@@ -48,13 +50,17 @@ public class PlayerEntityMixin implements PlayerEntityDuck {
 				var frontBox = self.getBoundingBox().stretch(0.2, 0.2, 0.2);
 				for (var entity : self.world.getEntitiesByType(TypeFilter.instanceOf(LivingEntity.class), frontBox, entity -> entity != self)) {
 					if (!entity.isInvulnerable()) {
-						entity.damage(new CannonPlayerDamageSource(self), (float)(vel.length() * 1.6));
+						entity.damage(new CannonPlayerDamageSource(self), (float)(vel.length() * 4));
 					}
 				}
 			}
 
 			if ((self.isOnGround() || self.isFallFlying() || self.getAbilities().flying || self.isSubmergedInWater())) {
 				this.blasttravel$setCannonFlight(false);
+				if (self.isOnGround()) {
+					self.world.playSound(null, self.getX(), self.getY(), self.getZ(),
+							SoundEvents.ENTITY_GENERIC_SMALL_FALL, SoundCategory.PLAYERS, 1, 0.78f);
+				}
 			}
 		}
 
@@ -79,6 +85,13 @@ public class PlayerEntityMixin implements PlayerEntityDuck {
 		}
 	}
 
+	@Inject(method = "getActiveEyeHeight", at = @At("HEAD"), cancellable = true)
+	private void blasttravel$setFlyingEyeHeight(EntityPose pose, EntityDimensions dimensions, CallbackInfoReturnable<Float> cir) {
+		if (this.blasttravel$inCannonFlight()) {
+			cir.setReturnValue(dimensions.height * 0.5f);
+		}
+	}
+
 	@Override
 	public void blasttravel$setCannonFlight(boolean inFlight) {
 		if (inFlight && !this.blasttravel$inCannonFlight) {
@@ -91,6 +104,7 @@ public class PlayerEntityMixin implements PlayerEntityDuck {
 		this.blasttravel$inCannonFlight = inFlight;
 		((LivingEntityAccess)this).blasttravel$setNoDrag(inFlight);
 
+		((PlayerEntity)(Object)this).calculateDimensions();
 	}
 
 	@Override
