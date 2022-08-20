@@ -1,0 +1,19 @@
+{
+    "type": "minecraft:crafting_shaped",
+    "pattern": [
+        "  A",
+        "BA ",
+        "CDE"
+    ],
+    "key": {
+        "A": {"item": "minecraft:iron_block"},
+        "B": {"item": "minecraft:string"},
+        "C": {"tag": "minecraft:stone_crafting_materials"},
+        "D": {"item": "minecraft:stick"},
+        "E": {"tag": "minecraft:logs"}
+    },
+    "result": {
+        "item": "blasttravel:cannon",
+        "count": 1
+    }
+}

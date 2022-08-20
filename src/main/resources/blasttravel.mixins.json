@@ -9,6 +9,7 @@
   ],
   "client": [
     "ClientPlayerEntityMixin",
+    "ClientPlayNetworkHandlerMixin",
     "InGameHudAccess",
     "InGameHudMixin",
     "PlayerEntityModelMixin",

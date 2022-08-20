@@ -3,6 +3,8 @@
     "item.blasttravel.cannon": "Cannon",
     "entity.blasttravel.cannon": "Cannon",
 
+    "death.attack.blasttravel.cannon": "%s was knocked out by a flying %s",
+    "dialog.blasttravel.full_cannon": "Cannon is full!",
     "dialog.blasttravel.no_gunpowder": "Cannon has no gunpowder!",
-    "death.attack.blasttravel.cannon": "%s was knocked out by a flying %s"
+    "mount.blasttravel.cannon.onboard": "Press %s to Exit, or %s to Fire"
 }

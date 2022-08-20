@@ -1,11 +1,11 @@
 package foundationgames.blasttravel.entity;
 
 import foundationgames.blasttravel.BlastTravel;
+import foundationgames.blasttravel.entity.cannon.CannonBehavior;
+import foundationgames.blasttravel.entity.cannon.EntityCannonBehavior;
 import foundationgames.blasttravel.screen.CannonScreenHandler;
 import foundationgames.blasttravel.util.BTNetworking;
 import foundationgames.blasttravel.util.PlayerEntityDuck;
-import it.unimi.dsi.fastutil.objects.Object2IntMap;
-import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
 import net.minecraft.block.Blocks;
@@ -19,7 +19,6 @@ import net.minecraft.entity.data.TrackedDataHandlerRegistry;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.inventory.Inventories;
 import net.minecraft.inventory.SimpleInventory;
-import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
 import net.minecraft.item.PickaxeItem;
@@ -31,41 +30,39 @@ import net.minecraft.screen.SimpleNamedScreenHandlerFactory;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.sound.SoundCategory;
 import net.minecraft.sound.SoundEvents;
+import net.minecraft.tag.ItemTags;
 import net.minecraft.text.Text;
 import net.minecraft.util.ActionResult;
 import net.minecraft.util.Formatting;
 import net.minecraft.util.Hand;
-import net.minecraft.util.Identifier;
 import net.minecraft.util.ItemScatterer;
 import net.minecraft.util.math.MathHelper;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.world.World;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
-
 public class CannonEntity extends Entity {
-	private static final List<Wrapping> ID_TO_WRAPPING = new ArrayList<>();
-	private static final Object2IntMap<Item> ITEM_TO_WRAPPING = new Object2IntOpenHashMap<>();
 
 	public static final Text UI_TITLE = Text.translatable("container.blasttravel.cannon");
 	public static final Text NO_GUNPOWDER_DIALOG = Text.translatable("dialog.blasttravel.no_gunpowder").formatted(Formatting.RED);
+	public static final Text FULL_CANNON_DIALOG = Text.translatable("dialog.blasttravel.full_cannon").formatted(Formatting.RED);
 
-	public static final Wrapping NONE = new Wrapping(Items.AIR, BlastTravel.id("textures/entity/cannon/regular.png")).register();
-	public static final Wrapping GOLDEN = new Wrapping(Items.GOLD_BLOCK, BlastTravel.id("textures/entity/cannon/golden.png")).register();
-	public static final Wrapping MOSSY = new Wrapping(Items.MOSS_BLOCK, BlastTravel.id("textures/entity/cannon/mossy.png")).register();
-	public static final Wrapping LAZULI = new Wrapping(Items.LAPIS_BLOCK, BlastTravel.id("textures/entity/cannon/lazuli.png")).register();
-	public static final Wrapping AMETHYST = new Wrapping(Items.AMETHYST_BLOCK, BlastTravel.id("textures/entity/cannon/amethyst.png")).register();
+	public static final CannonBehavior NONE = new CannonBehavior(Items.AIR, stack -> false).register();
+	public static final CannonBehavior GOLDEN = new CannonBehavior(Items.GOLD_BLOCK, BlastTravel.id("textures/entity/cannon/golden.png")).register();
+	public static final CannonBehavior MOSSY = new CannonBehavior(Items.MOSS_BLOCK, BlastTravel.id("textures/entity/cannon/mossy.png")).register();
+	public static final CannonBehavior LAZULI = new CannonBehavior(Items.LAPIS_BLOCK, BlastTravel.id("textures/entity/cannon/lazuli.png")).register();
+	public static final CannonBehavior AMETHYST = new CannonBehavior(Items.AMETHYST_BLOCK, BlastTravel.id("textures/entity/cannon/amethyst.png")).register();
+	public static final CannonBehavior TNT = new EntityCannonBehavior(Items.TNT, BlastTravel.id("textures/entity/cannon/tnt.png"), EntityCannonBehavior::tntFactory).register();
+	public static final CannonBehavior ANVIL = new EntityCannonBehavior(Items.ANVIL, s -> s.isIn(ItemTags.ANVIL), BlastTravel.id("textures/entity/cannon/anvil.png"), EntityCannonBehavior::fallingBlockFactory).register();
 
-	public static final TrackedData<Integer> WRAPPING = DataTracker.registerData(CannonEntity.class, TrackedDataHandlerRegistry.INTEGER);
+	public static final TrackedData<Integer> BEHAVIOR = DataTracker.registerData(CannonEntity.class, TrackedDataHandlerRegistry.INTEGER);
 	public static final TrackedData<Boolean> CHAINED = DataTracker.registerData(CannonEntity.class, TrackedDataHandlerRegistry.BOOLEAN);
 
 	public static final int MAX_ANIMATION = 12;
 
 	private boolean chained;
 	private boolean firing;
+	private boolean powered;
 
 	private int animation = 0;
 
@@ -110,10 +107,21 @@ public class CannonEntity extends Entity {
 			this.animation--;
 		}
 
-		if (this.world.isClient() && this.hasPassengers()) {
-			var pos = this.getPos().add(0, 0.75, 0).add(this.getRotationVector(this.getPitch() - 90, this.getYaw()).multiply(0.75));
-			MinecraftClient.getInstance().particleManager.addParticle(ParticleTypes.SMOKE,
-					pos.x, pos.y, pos.z, 0, 0, 0);
+		if (this.world.isClient()) {
+			if (this.hasFuse()) {
+				var pos = this.getPos().add(0, 0.75, 0).add(this.getRotationVector(this.getPitch() - 90, this.getYaw()).multiply(0.75));
+				MinecraftClient.getInstance().particleManager.addParticle(ParticleTypes.SMOKE,
+						pos.x, pos.y, pos.z, 0, 0, 0);
+			}
+		} else {
+			boolean hasPower = this.world.getReceivedRedstonePower(this.getBlockPos()) > 0 ||
+					this.world.getReceivedRedstonePower(this.getBlockPos().down()) > 0;
+			if (hasPower != this.powered) {
+				if (hasPower) {
+					this.fireServer();
+				}
+				this.powered = hasPower;
+			}
 		}
 	}
 
@@ -144,7 +152,7 @@ public class CannonEntity extends Entity {
 			return ActionResult.SUCCESS;
 		}
 
-		if (!this.hasPassengers()) {
+		if (!this.hasPassengers() && !this.getBehavior().hasAlternateFire(this.inventory.getStack(2))) {
 			if (!world.isClient()) {
 				player.setYaw(this.getYaw());
 				player.setPitch(this.getPitch());
@@ -153,6 +161,8 @@ public class CannonEntity extends Entity {
 				return ActionResult.PASS;
 			}
 			return ActionResult.SUCCESS;
+		} else {
+			player.sendMessage(FULL_CANNON_DIALOG, true);
 		}
 
 		return super.interact(player, hand);
@@ -200,30 +210,42 @@ public class CannonEntity extends Entity {
 		}
 	}
 
-	public void tryFire() {
+	public void fireServer() {
 		if (this.world instanceof ServerWorld world) {
 			var gunpowder = this.inventory.getStack(0);
 			if (gunpowder.isOf(Items.GUNPOWDER) && gunpowder.getCount() > 0) {
-				if (this.getPrimaryPassenger() instanceof PlayerEntity player) {
-					var vel = getRotationVector().multiply(Math.sqrt(gunpowder.getCount()) * 0.6);
+				PlayerEntity firedPlayer = null;
+				var behavior = this.getBehavior();
+				var behaviorStack = this.inventory.getStack(2);
+				var vel = getRotationVector().multiply(Math.sqrt(gunpowder.getCount()) * 0.6);
+
+				if (behavior.hasAlternateFire(behaviorStack)) {
+					behavior.alternateFire(this, behaviorStack, vel);
+				} if (this.getPrimaryPassenger() instanceof PlayerEntity player) {
 					player.stopRiding();
 					player.setVelocity(vel);
 					((PlayerEntityDuck)player).blasttravel$setCannonFlight(true);
-
-					this.world.playSound(null, this.getBlockPos(), SoundEvents.ENTITY_GENERIC_EXPLODE, SoundCategory.BLOCKS, 1, 1);
-					world.getPlayers().forEach(to -> BTNetworking.s2cFireCannon(to, this,
-							player, vel));
+					firedPlayer = player;
 				}
-			} else if (this.getPrimaryPassenger() instanceof PlayerEntity player) {
-				player.stopRiding();
-				player.sendMessage(NO_GUNPOWDER_DIALOG, true);
+
+				this.world.playSound(null, this.getBlockPos(), SoundEvents.ENTITY_GENERIC_EXPLODE, SoundCategory.BLOCKS, 1, 1);
+				for (var to : world.getPlayers()) {
+					BTNetworking.s2cFireCannon(to, this, firedPlayer, vel);
+				}
+
+				this.updateStateFromInventory();
+			} else {
+				if (this.getPrimaryPassenger() instanceof PlayerEntity player) {
+					player.stopRiding();
+					player.sendMessage(NO_GUNPOWDER_DIALOG, true);
+				}
 
 				this.world.playSound(null, this.getBlockPos(), SoundEvents.ENTITY_GENERIC_EXTINGUISH_FIRE, SoundCategory.BLOCKS, 1, 0.8f);
 			}
 		}
 	}
 
-	public void onFiredClient() {
+	public void fireClient() {
 		if (!world.isClient()) {
 			return;
 		}
@@ -233,13 +255,17 @@ public class CannonEntity extends Entity {
 		final int ringParticles = 18;
 		for (int i = 0; i < ringParticles; i++) {
 			double angle = (2d / ringParticles) * Math.PI * i;
-			var vec = new Vec3d(Math.sin(angle), Math.cos(angle), 0)
-					.rotateX(-this.getPitch() * MathHelper.RADIANS_PER_DEGREE).rotateY(-this.getYaw() * MathHelper.RADIANS_PER_DEGREE);
+			var arc = new Vec3d(Math.sin(angle), Math.cos(angle), 0)
+					.rotateX(-this.getPitch() * MathHelper.RADIANS_PER_DEGREE)
+					.rotateY(-this.getYaw() * MathHelper.RADIANS_PER_DEGREE);
 
-			var pos = this.getPos().add(0, 0.75, 0).add(this.getRotationVector().multiply(1.69f)).add(vec.multiply(0.42f));
-			var vel = vec.multiply(0.013);
+			var pos = this.getPos()
+					.add(0, 0.75, 0)
+					.add(this.getRotationVector(this.getPitch() - 4, this.getYaw())
+							.multiply(1.69f)).add(arc.multiply(0.15f));
+			var vel = arc.multiply(0.14);
 
-			MinecraftClient.getInstance().particleManager.addParticle(ParticleTypes.CAMPFIRE_COSY_SMOKE,
+			MinecraftClient.getInstance().particleManager.addParticle(BlastTravel.CANNON_BLAST,
 					pos.x, pos.y, pos.z, vel.x, vel.y, vel.z);
 		}
 	}
@@ -248,16 +274,16 @@ public class CannonEntity extends Entity {
 		this.animation = MAX_ANIMATION;
 	}
 
-	protected int getWrappingId() {
-		return this.dataTracker.get(WRAPPING);
+	protected int getBehaviorId() {
+		return this.dataTracker.get(BEHAVIOR);
 	}
 
-	protected void setWrappingId(int id) {
-		this.dataTracker.set(WRAPPING, id);
+	protected void setBehaviorId(int id) {
+		this.dataTracker.set(BEHAVIOR, id);
 	}
 
 	public boolean hasFuse() {
-		return this.hasPassengers();
+		return this.hasPassengers() || this.getBehavior().hasAlternateFire(this.inventory.getStack(2));
 	}
 
 	public boolean hasChains() {
@@ -271,14 +297,6 @@ public class CannonEntity extends Entity {
 
 	public int getAnimationTick() {
 		return this.animation;
-	}
-
-	public static boolean isValidWrappingStack(ItemStack stack) {
-		return ITEM_TO_WRAPPING.containsKey(stack.getItem());
-	}
-
-	public static Collection<Wrapping> allWrappings() {
-		return ID_TO_WRAPPING;
 	}
 
 	private void setChained(boolean chained) {
@@ -295,18 +313,18 @@ public class CannonEntity extends Entity {
 		return this.getPrimaryPassenger() instanceof AbstractClientPlayerEntity player ? player : null;
 	}
 
-	public Wrapping getWrapping() {
-		return ID_TO_WRAPPING.get(getWrappingId());
+	public CannonBehavior getBehavior() {
+		return CannonBehavior.byId(getBehaviorId());
 	}
 
 	protected void updateStateFromInventory() {
 		if (!this.world.isClient()) {
 			for (int slot = 0; slot < this.inventory.size(); slot++) {
-				var item = this.inventory.getStack(slot).getItem();
+				var stack = this.inventory.getStack(slot);
 				if (slot == 1) {
-					setChained(item == Items.CHAIN);
+					setChained(stack.isOf(Items.CHAIN));
 				} else if (slot == 2) {
-					this.setWrappingId(ITEM_TO_WRAPPING.getOrDefault(item, 0));
+					this.setBehaviorId(CannonBehavior.idForStack(stack));
 				}
 			}
 		}
@@ -350,13 +368,15 @@ public class CannonEntity extends Entity {
 
 	@Override
 	protected void initDataTracker() {
-		this.dataTracker.startTracking(WRAPPING, 0);
+		this.dataTracker.startTracking(BEHAVIOR, 0);
 		this.dataTracker.startTracking(CHAINED, false);
 	}
 
 	@Override
 	protected void readCustomDataFromNbt(NbtCompound nbt) {
 		Inventories.readNbt(nbt.getCompound("Items"), this.inventory.stacks);
+		this.powered = nbt.getBoolean("powered");
+
 		this.updateStateFromInventory();
 	}
 
@@ -365,19 +385,11 @@ public class CannonEntity extends Entity {
 		var inv = new NbtCompound();
 		Inventories.writeNbt(inv, this.inventory.stacks);
 		nbt.put("Items", inv);
+		nbt.putBoolean("powered", this.powered);
 	}
 
 	@Override
 	public Packet<?> createSpawnPacket() {
 		return new EntitySpawnS2CPacket(this);
-	}
-
-	public record Wrapping(Item filter, Identifier texture) {
-		public Wrapping register() {
-			ITEM_TO_WRAPPING.put(this.filter, ID_TO_WRAPPING.size());
-			ID_TO_WRAPPING.add(this);
-
-			return this;
-		}
 	}
 }

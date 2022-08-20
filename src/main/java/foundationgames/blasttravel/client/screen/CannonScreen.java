@@ -2,7 +2,7 @@ package foundationgames.blasttravel.client.screen;
 
 import com.mojang.blaze3d.systems.RenderSystem;
 import foundationgames.blasttravel.BlastTravel;
-import foundationgames.blasttravel.entity.CannonEntity;
+import foundationgames.blasttravel.entity.cannon.CannonBehavior;
 import foundationgames.blasttravel.screen.CannonScreenHandler;
 import net.minecraft.client.gui.DrawableHelper;
 import net.minecraft.client.gui.screen.ingame.HandledScreen;
@@ -18,8 +18,8 @@ import net.minecraft.util.math.MathHelper;
 public class CannonScreen extends HandledScreen<CannonScreenHandler> {
 	private static final Identifier TEXTURE = BlastTravel.id("textures/gui/container/cannon.png");
 
-	private final ItemStack[] allowedWrappings = CannonEntity.allWrappings().stream()
-			.filter(w -> w.filter() != Items.AIR).map(w -> new ItemStack(w.filter())).toArray(ItemStack[]::new);
+	private final ItemStack[] allowedBehaviorStacks = CannonBehavior.allBehaviors().stream()
+			.filter(b -> b.icon != Items.AIR).map(b -> new ItemStack(b.icon)).toArray(ItemStack[]::new);
 
 	private long time = (long) (Math.random() * 1000);
 
@@ -50,7 +50,7 @@ public class CannonScreen extends HandledScreen<CannonScreenHandler> {
 		if (this.getScreenHandler().inventory.getStack(2).isEmpty()) {
 			int x = this.x + 98; int y = this.y + 20;
 			this.itemRenderer.renderInGui(
-					this.allowedWrappings[MathHelper.floor((float)this.time / 30) % this.allowedWrappings.length], x, y);
+					this.allowedBehaviorStacks[MathHelper.floor((float)this.time / 30) % this.allowedBehaviorStacks.length], x, y);
 
 			RenderSystem.depthFunc(516);
 			DrawableHelper.fill(matrices, x, y, x + 16, y + 16, 0x8B8B8B8B);

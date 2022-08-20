@@ -73,7 +73,7 @@ public class CannonEntityRenderer extends EntityRenderer<CannonEntity> {
 
 	@Override
 	public Identifier getTexture(CannonEntity entity) {
-		return entity.getWrapping().texture();
+		return entity.getBehavior().texture();
 	}
 
 	@Override

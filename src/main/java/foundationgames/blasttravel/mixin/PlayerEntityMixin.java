@@ -44,7 +44,7 @@ public class PlayerEntityMixin implements PlayerEntityDuck {
 		if (this.blasttravel$inCannonFlight()) {
 			if (self.world.isClient()) {
 				MinecraftClient.getInstance().particleManager.addParticle(ParticleTypes.CAMPFIRE_COSY_SMOKE,
-						self.getX(), self.getY(), self.getZ(), 0, 0, 0);
+						self.prevX, self.prevY, self.prevZ, 0, 0, 0);
 			} else {
 				var vel = self.getVelocity();
 				var frontBox = self.getBoundingBox().stretch(0.2, 0.2, 0.2);

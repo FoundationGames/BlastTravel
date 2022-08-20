@@ -1,7 +1,7 @@
 package foundationgames.blasttravel.screen;
 
 import foundationgames.blasttravel.BlastTravel;
-import foundationgames.blasttravel.entity.CannonEntity;
+import foundationgames.blasttravel.entity.cannon.CannonBehavior;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.entity.player.PlayerInventory;
 import net.minecraft.inventory.Inventory;
@@ -29,7 +29,7 @@ public class CannonScreenHandler extends ScreenHandler {
 
 		this.addSlot(new FilterSlot(inv, 0, 62, 20, stack -> stack.isOf(Items.GUNPOWDER)));
 		this.addSlot(new FilterSlot(inv, 1, 80, 20, stack -> stack.isOf(Items.CHAIN)));
-		this.addSlot(new FilterSlot(inv, 2, 98, 20, CannonEntity::isValidWrappingStack));
+		this.addSlot(new FilterSlot(inv, 2, 98, 20, CannonBehavior::isValidBehaviorStack));
 
 		int row;
 		int col;

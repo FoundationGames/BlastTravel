@@ -5,10 +5,12 @@ import foundationgames.blasttravel.item.CannonItem;
 import foundationgames.blasttravel.screen.CannonScreenHandler;
 import foundationgames.blasttravel.util.BTNetworking;
 import net.fabricmc.fabric.api.object.builder.v1.entity.FabricEntityTypeBuilder;
+import net.fabricmc.fabric.api.particle.v1.FabricParticleTypes;
 import net.minecraft.entity.EntityDimensions;
 import net.minecraft.entity.EntityType;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemGroup;
+import net.minecraft.particle.DefaultParticleType;
 import net.minecraft.screen.ScreenHandlerType;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.registry.Registry;
@@ -32,6 +34,9 @@ public class BlastTravel implements ModInitializer {
 
 	public static final Item CANNON_ITEM = Registry.register(Registry.ITEM, id("cannon"),
 			new CannonItem(new Item.Settings().group(ItemGroup.TRANSPORTATION)));
+
+	public static final DefaultParticleType CANNON_BLAST = Registry.register(Registry.PARTICLE_TYPE,
+			id("cannon_blast"), FabricParticleTypes.simple(true));
 
 	@Override
 	public void onInitialize(ModContainer mod) {

@@ -32,7 +32,7 @@ public class InGameHudMixin {
 		return old;
 	}
 
-	@Inject(method = "render", at = @At(value = "INVOKE", ordinal = 0, target = "Lnet/minecraft/util/math/MathHelper;lerp(FFF)F", shift = At.Shift.AFTER), locals = LocalCapture.CAPTURE_FAILSOFT)
+	@Inject(method = "render", at = @At(value = "INVOKE", ordinal = 0, target = "Lnet/minecraft/util/math/MathHelper;lerp(FFF)F", shift = At.Shift.AFTER), locals = LocalCapture.CAPTURE_FAILEXCEPTION)
 	private void blasttravel$renderCannonOverlay(MatrixStack matrices, float tickDelta, CallbackInfo ci, TextRenderer x, float frameDuration) {
 		if (this.client.player.getVehicle() instanceof CannonEntity) {
 			this.blasttravel$cannonOverlayScale = MathHelper.lerp(0.5f * frameDuration, this.blasttravel$cannonOverlayScale, 1.125f);
