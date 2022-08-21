@@ -26,6 +26,14 @@ public class CannonEntityRenderer extends EntityRenderer<CannonEntity> {
 			BlastTravel.id("textures/entity/cannon_fire/frame_4.png")
 	};
 
+	private static final Identifier[] DYED_FIRE_TEXTURES = {
+			BlastTravel.id("textures/entity/cannon_fire/dyed_frame_0.png"),
+			BlastTravel.id("textures/entity/cannon_fire/dyed_frame_1.png"),
+			BlastTravel.id("textures/entity/cannon_fire/dyed_frame_2.png"),
+			BlastTravel.id("textures/entity/cannon_fire/dyed_frame_3.png"),
+			BlastTravel.id("textures/entity/cannon_fire/dyed_frame_4.png")
+	};
+
 	private static final Identifier[] SMOKE_TEXTURES = {
 			BlastTravel.id("textures/entity/cannon_smoke/frame_0.png"),
 			BlastTravel.id("textures/entity/cannon_smoke/frame_1.png"),
@@ -73,13 +81,14 @@ public class CannonEntityRenderer extends EntityRenderer<CannonEntity> {
 
 	@Override
 	public Identifier getTexture(CannonEntity entity) {
-		return entity.getBehavior().texture();
+		return entity.getBehavior().texture(entity.getBehaviorStack());
 	}
 
 	@Override
 	public void render(CannonEntity entity, float yaw, float tickDelta, MatrixStack matrices, VertexConsumerProvider vertexConsumers, int light) {
 		super.render(entity, yaw, tickDelta, matrices, vertexConsumers, light);
 		matrices.push();
+		var behavior = entity.getBehavior();
 
 		yaw = (180 + yaw) * MathHelper.RADIANS_PER_DEGREE;
 
@@ -106,13 +115,19 @@ public class CannonEntityRenderer extends EntityRenderer<CannonEntity> {
 
 		this.root.render(matrices, vertexConsumers.getBuffer(RenderLayer.getEntityCutout(this.getTexture(entity))), light, OverlayTexture.DEFAULT_UV);
 
+		var color = behavior.fireColor(entity);
 		int tick = Math.max(0, (CannonEntity.MAX_ANIMATION - entity.getAnimationTick()) - 3);
 		if (tick <= 7) {
 			this.fire.visible = true;
 			this.fire.pitch = this.cannon.pitch;
 		}
 		if (tick <= 4) {
-			this.fire.render(matrices, vertexConsumers.getBuffer(RenderLayer.getEyes(FIRE_TEXTURES[tick])), light, OverlayTexture.DEFAULT_UV);
+			if (color != null) {
+				this.fire.render(matrices, vertexConsumers.getBuffer(RenderLayer.getEyes(DYED_FIRE_TEXTURES[tick])),
+						light, OverlayTexture.DEFAULT_UV, color.getX(), color.getY(), color.getZ(), 1);
+			} else {
+				this.fire.render(matrices, vertexConsumers.getBuffer(RenderLayer.getEyes(FIRE_TEXTURES[tick])), light, OverlayTexture.DEFAULT_UV);
+			}
 		}
 		tick -= 3;
 		if (tick >= 0 && tick <= 4) {
@@ -120,12 +135,14 @@ public class CannonEntityRenderer extends EntityRenderer<CannonEntity> {
 					1, 1, 1, 0.9f - (0.07f * tick));
 		}
 
-		var player = entity.getClientPlayer();
-		if (renderCannon && player != null) {
+		if (renderCannon && behavior.displayHead(entity)) {
 			this.playerHead.visible = true;
 			this.playerHead.pitch = this.cannon.pitch;
 
-			this.playerHead.render(matrices, vertexConsumers.getBuffer(RenderLayer.getEntityCutoutNoCull(player.getSkinTexture())), light, OverlayTexture.DEFAULT_UV);
+			color = behavior.headColor(entity);
+			this.playerHead.render(matrices,
+					vertexConsumers.getBuffer(RenderLayer.getEntityCutoutNoCull(behavior.headTexture(entity))),
+					light, OverlayTexture.DEFAULT_UV, color.getX(), color.getY(), color.getZ(), 1);
 		}
 
 		this.resetModel();

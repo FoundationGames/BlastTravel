@@ -2,14 +2,11 @@ package foundationgames.blasttravel.mixin;
 
 import foundationgames.blasttravel.entity.CannonPlayerDamageSource;
 import foundationgames.blasttravel.util.PlayerEntityDuck;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.network.ClientPlayerEntity;
 import net.minecraft.entity.EntityDimensions;
 import net.minecraft.entity.EntityPose;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.damage.DamageSource;
 import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.particle.ParticleTypes;
 import net.minecraft.sound.SoundCategory;
 import net.minecraft.sound.SoundEvents;
 import net.minecraft.util.TypeFilter;
@@ -33,7 +30,7 @@ public class PlayerEntityMixin implements PlayerEntityDuck {
 
 	@Inject(method = "tick", at = @At("HEAD"))
 	private void blasttravel$beginTick(CallbackInfo ci) {
-		this.blasttravel$prevVel = (Object)this instanceof ClientPlayerEntity ? blasttravel$vel : blasttravel$trackingVel;
+		this.blasttravel$prevVel = ((PlayerEntity)(Object)this).isMainPlayer() ? blasttravel$vel : blasttravel$trackingVel;
 	}
 
 	@Inject(method = "tick", at = @At("TAIL"))
@@ -42,10 +39,7 @@ public class PlayerEntityMixin implements PlayerEntityDuck {
 		this.blasttravel$vel = self.getPos().subtract(self.prevX, self.prevY, self.prevZ);
 
 		if (this.blasttravel$inCannonFlight()) {
-			if (self.world.isClient()) {
-				MinecraftClient.getInstance().particleManager.addParticle(ParticleTypes.CAMPFIRE_COSY_SMOKE,
-						self.prevX, self.prevY, self.prevZ, 0, 0, 0);
-			} else {
+			 if (!self.world.isClient()) {
 				var vel = self.getVelocity();
 				var frontBox = self.getBoundingBox().stretch(0.2, 0.2, 0.2);
 				for (var entity : self.world.getEntitiesByType(TypeFilter.instanceOf(LivingEntity.class), frontBox, entity -> entity != self)) {
@@ -64,7 +58,7 @@ public class PlayerEntityMixin implements PlayerEntityDuck {
 			}
 		}
 
-		if (!((Object)this instanceof ClientPlayerEntity)) {
+		if (!((PlayerEntity)(Object)this).isMainPlayer()) {
 			this.blasttravel$trackingVel = this.blasttravel$trackingVel.add(
 					this.blasttravel$vel.subtract(this.blasttravel$trackingVel).multiply(1f / self.getType().getTrackTickInterval()));
 		}
@@ -114,7 +108,7 @@ public class PlayerEntityMixin implements PlayerEntityDuck {
 
 	@Override
 	public Vec3d blasttravel$getVelocityLerped(float delta) {
-		var vel = (Object)this instanceof ClientPlayerEntity ? blasttravel$vel : blasttravel$trackingVel;
+		var vel = ((PlayerEntity)(Object)this).isMainPlayer() ? blasttravel$vel : blasttravel$trackingVel;
 		return new Vec3d(
 				MathHelper.lerp(delta, blasttravel$prevVel.x, vel.x),
 				MathHelper.lerp(delta, blasttravel$prevVel.y, vel.y),

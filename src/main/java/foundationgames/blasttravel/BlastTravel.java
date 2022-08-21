@@ -8,8 +8,12 @@ import net.fabricmc.fabric.api.object.builder.v1.entity.FabricEntityTypeBuilder;
 import net.fabricmc.fabric.api.particle.v1.FabricParticleTypes;
 import net.minecraft.entity.EntityDimensions;
 import net.minecraft.entity.EntityType;
+import net.minecraft.entity.data.TrackedDataHandler;
+import net.minecraft.entity.data.TrackedDataHandlerRegistry;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemGroup;
+import net.minecraft.item.ItemStack;
+import net.minecraft.network.PacketByteBuf;
 import net.minecraft.particle.DefaultParticleType;
 import net.minecraft.screen.ScreenHandlerType;
 import net.minecraft.util.Identifier;
@@ -38,9 +42,13 @@ public class BlastTravel implements ModInitializer {
 	public static final DefaultParticleType CANNON_BLAST = Registry.register(Registry.PARTICLE_TYPE,
 			id("cannon_blast"), FabricParticleTypes.simple(true));
 
+	public static final TrackedDataHandler<ItemStack> ITEM_STACK_HANDLER = TrackedDataHandler.create(PacketByteBuf::writeItemStack, PacketByteBuf::readItemStack);
+
 	@Override
 	public void onInitialize(ModContainer mod) {
 		BTNetworking.init();
+
+		TrackedDataHandlerRegistry.register(ITEM_STACK_HANDLER);
 	}
 
 	public static Identifier id(String path) {

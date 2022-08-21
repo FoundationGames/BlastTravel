@@ -5,13 +5,14 @@
   "compatibilityLevel": "JAVA_17",
   "mixins": [
     "LivingEntityAccess",
-    "PlayerEntityMixin"
+    "PlayerEntityMixin",
   ],
   "client": [
     "ClientPlayerEntityMixin",
     "ClientPlayNetworkHandlerMixin",
     "InGameHudAccess",
     "InGameHudMixin",
+    "PlayerEntityMixinClient",
     "PlayerEntityModelMixin",
     "PlayerEntityRendererMixin"
   ],

@@ -2,6 +2,7 @@ package foundationgames.blasttravel.entity;
 
 import foundationgames.blasttravel.BlastTravel;
 import foundationgames.blasttravel.entity.cannon.CannonBehavior;
+import foundationgames.blasttravel.entity.cannon.ConcretePowderCannonBehavior;
 import foundationgames.blasttravel.entity.cannon.EntityCannonBehavior;
 import foundationgames.blasttravel.screen.CannonScreenHandler;
 import foundationgames.blasttravel.util.BTNetworking;
@@ -42,7 +43,6 @@ import net.minecraft.world.World;
 import org.jetbrains.annotations.Nullable;
 
 public class CannonEntity extends Entity {
-
 	public static final Text UI_TITLE = Text.translatable("container.blasttravel.cannon");
 	public static final Text NO_GUNPOWDER_DIALOG = Text.translatable("dialog.blasttravel.no_gunpowder").formatted(Formatting.RED);
 	public static final Text FULL_CANNON_DIALOG = Text.translatable("dialog.blasttravel.full_cannon").formatted(Formatting.RED);
@@ -54,9 +54,11 @@ public class CannonEntity extends Entity {
 	public static final CannonBehavior AMETHYST = new CannonBehavior(Items.AMETHYST_BLOCK, BlastTravel.id("textures/entity/cannon/amethyst.png")).register();
 	public static final CannonBehavior TNT = new EntityCannonBehavior(Items.TNT, BlastTravel.id("textures/entity/cannon/tnt.png"), EntityCannonBehavior::tntFactory).register();
 	public static final CannonBehavior ANVIL = new EntityCannonBehavior(Items.ANVIL, s -> s.isIn(ItemTags.ANVIL), BlastTravel.id("textures/entity/cannon/anvil.png"), EntityCannonBehavior::fallingBlockFactory).register();
+	public static final CannonBehavior POWDER = new ConcretePowderCannonBehavior().register();
 
 	public static final TrackedData<Integer> BEHAVIOR = DataTracker.registerData(CannonEntity.class, TrackedDataHandlerRegistry.INTEGER);
 	public static final TrackedData<Boolean> CHAINED = DataTracker.registerData(CannonEntity.class, TrackedDataHandlerRegistry.BOOLEAN);
+	public static final TrackedData<ItemStack> BEHAVIOR_STACK = DataTracker.registerData(CannonEntity.class, BlastTravel.ITEM_STACK_HANDLER);
 
 	public static final int MAX_ANIMATION = 12;
 
@@ -152,7 +154,7 @@ public class CannonEntity extends Entity {
 			return ActionResult.SUCCESS;
 		}
 
-		if (!this.hasPassengers() && !this.getBehavior().hasAlternateFire(this.inventory.getStack(2))) {
+		if (!this.hasPassengers() && !this.getBehavior().occupiesCannon(this.inventory.getStack(2))) {
 			if (!world.isClient()) {
 				player.setYaw(this.getYaw());
 				player.setPitch(this.getPitch());
@@ -201,6 +203,14 @@ public class CannonEntity extends Entity {
 		}
 	}
 
+	public ItemStack getBehaviorStack() {
+		if (!this.world.isClient()) {
+			return this.inventory.getStack(2);
+		}
+
+		return this.dataTracker.get(BEHAVIOR_STACK);
+	}
+
 	public void handleInput(boolean firing) {
 		if (this.world.isClient()) {
 			if (firing && !this.firing) {
@@ -215,13 +225,11 @@ public class CannonEntity extends Entity {
 			var gunpowder = this.inventory.getStack(0);
 			if (gunpowder.isOf(Items.GUNPOWDER) && gunpowder.getCount() > 0) {
 				PlayerEntity firedPlayer = null;
-				var behavior = this.getBehavior();
-				var behaviorStack = this.inventory.getStack(2);
+				var behaviorStack = this.getBehaviorStack();
 				var vel = getRotationVector().multiply(Math.sqrt(gunpowder.getCount()) * 0.6);
 
-				if (behavior.hasAlternateFire(behaviorStack)) {
-					behavior.alternateFire(this, behaviorStack, vel);
-				} if (this.getPrimaryPassenger() instanceof PlayerEntity player) {
+				this.getBehavior().onFired(this, behaviorStack, vel);
+				if (this.getPrimaryPassenger() instanceof PlayerEntity player) {
 					player.stopRiding();
 					player.setVelocity(vel);
 					((PlayerEntityDuck)player).blasttravel$setCannonFlight(true);
@@ -283,7 +291,7 @@ public class CannonEntity extends Entity {
 	}
 
 	public boolean hasFuse() {
-		return this.hasPassengers() || this.getBehavior().hasAlternateFire(this.inventory.getStack(2));
+		return this.hasPassengers() || this.getBehavior().occupiesCannon(this.inventory.getStack(2));
 	}
 
 	public boolean hasChains() {
@@ -325,6 +333,7 @@ public class CannonEntity extends Entity {
 					setChained(stack.isOf(Items.CHAIN));
 				} else if (slot == 2) {
 					this.setBehaviorId(CannonBehavior.idForStack(stack));
+					this.dataTracker.set(BEHAVIOR_STACK, stack);
 				}
 			}
 		}
@@ -370,6 +379,7 @@ public class CannonEntity extends Entity {
 	protected void initDataTracker() {
 		this.dataTracker.startTracking(BEHAVIOR, 0);
 		this.dataTracker.startTracking(CHAINED, false);
+		this.dataTracker.startTracking(BEHAVIOR_STACK, ItemStack.EMPTY);
 	}
 
 	@Override

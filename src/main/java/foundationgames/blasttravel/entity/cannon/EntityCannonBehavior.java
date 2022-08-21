@@ -27,12 +27,12 @@ public class EntityCannonBehavior extends CannonBehavior {
 	}
 
 	@Override
-	public boolean hasAlternateFire(ItemStack behaviorStack) {
+	public boolean occupiesCannon(ItemStack behaviorStack) {
 		return true;
 	}
 
 	@Override
-	public void alternateFire(CannonEntity cannon, ItemStack behaviorStack, Vec3d velocity) {
+	public void onFired(CannonEntity cannon, ItemStack behaviorStack, Vec3d velocity) {
 		var pos = cannon.getPos().add(0, 0.75, 0).add(cannon.getRotationVector().multiply(1.8));
 		var entity = entityFactory.create(cannon.getWorld(), pos, behaviorStack);
 		entity.setVelocity(velocity);
