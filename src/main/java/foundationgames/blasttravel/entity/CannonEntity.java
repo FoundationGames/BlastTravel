@@ -65,6 +65,7 @@ public class CannonEntity extends Entity {
 	private boolean chained;
 	private boolean firing;
 	private boolean powered;
+	private boolean alwaysModifiable;
 
 	private int animation = 0;
 
@@ -139,6 +140,10 @@ public class CannonEntity extends Entity {
 		}
 	}
 
+	public boolean canPlayerModify(PlayerEntity player) {
+		return this.alwaysModifiable || player.canModifyBlocks();
+	}
+
 	@Override
 	public ActionResult interact(PlayerEntity player, Hand hand) {
 		if (player == this.getPrimaryPassenger()) {
@@ -147,8 +152,12 @@ public class CannonEntity extends Entity {
 
 		if (player.isSneaking()) {
 			if (!world.isClient()) {
-				player.openHandledScreen(new SimpleNamedScreenHandlerFactory((syncId, playerInv, user) ->
-						new CannonScreenHandler(syncId, playerInv, this.inventory), UI_TITLE));
+				if (this.canPlayerModify(player)) {
+					player.openHandledScreen(new SimpleNamedScreenHandlerFactory((syncId, playerInv, user) ->
+							new CannonScreenHandler(syncId, playerInv, this.inventory), UI_TITLE));
+				} else {
+					world.playSound(null, this.getBlockPos(), SoundEvents.BLOCK_CHEST_LOCKED, SoundCategory.BLOCKS, 0.5f, 1.5f);
+				}
 				return ActionResult.PASS;
 			}
 			return ActionResult.SUCCESS;
@@ -386,6 +395,7 @@ public class CannonEntity extends Entity {
 	protected void readCustomDataFromNbt(NbtCompound nbt) {
 		Inventories.readNbt(nbt.getCompound("Items"), this.inventory.stacks);
 		this.powered = nbt.getBoolean("powered");
+		this.alwaysModifiable = nbt.getBoolean("alwaysModifiable");
 
 		this.updateStateFromInventory();
 	}
@@ -396,6 +406,7 @@ public class CannonEntity extends Entity {
 		Inventories.writeNbt(inv, this.inventory.stacks);
 		nbt.put("Items", inv);
 		nbt.putBoolean("powered", this.powered);
+		nbt.putBoolean("alwaysModifiable", this.alwaysModifiable);
 	}
 
 	@Override
