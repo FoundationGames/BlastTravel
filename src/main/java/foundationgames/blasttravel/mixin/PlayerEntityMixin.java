@@ -58,7 +58,7 @@ public class PlayerEntityMixin implements PlayerEntityDuck {
 			}
 		}
 
-		if (!((PlayerEntity)(Object)this).isMainPlayer()) {
+		if (!self.isMainPlayer()) {
 			this.blasttravel$trackingVel = this.blasttravel$trackingVel.add(
 					this.blasttravel$vel.subtract(this.blasttravel$trackingVel).multiply(1f / self.getType().getTrackTickInterval()));
 		}
@@ -88,17 +88,21 @@ public class PlayerEntityMixin implements PlayerEntityDuck {
 
 	@Override
 	public void blasttravel$setCannonFlight(boolean inFlight) {
+		var self = (PlayerEntity)(Object)this;
+
 		if (inFlight && !this.blasttravel$inCannonFlight) {
 			this.blasttravel$vel =
 					this.blasttravel$trackingVel =
 							this.blasttravel$prevVel = ((PlayerEntity)(Object)this).getVelocity();
 			this.blasttravel$cancelFallDamage = true;
+
+			self.setJumping(false);
 		}
 
 		this.blasttravel$inCannonFlight = inFlight;
 		((LivingEntityAccess)this).blasttravel$setNoDrag(inFlight);
 
-		((PlayerEntity)(Object)this).calculateDimensions();
+		self.calculateDimensions();
 	}
 
 	@Override

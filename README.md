@@ -2,6 +2,7 @@ Fast travel? How about...
 # Blast Travel
 ### Get from point A to B quickly and in style with cannons!
 ![Blast Travel](./img/blast_travel.png)
+![Created for ModFest: Singularity](https://blob.jortage.com/blobs/5/d4d/5d4d14d96db2e2024d87cf5606cb7ce6421633a002e328947f85d210ba250ecb9f86de8df210dd031be2d4eafb0980494e7a1e8e99590a550abaa42d82768b9f) <br/>
 Made for **ModFest: Singularity** (1.19) for the **Quilt Mod Loader**
 - Not planned to be ported to other loaders or versions (newer or older)
 
