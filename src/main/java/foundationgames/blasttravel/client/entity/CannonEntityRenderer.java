@@ -99,7 +99,7 @@ public class CannonEntityRenderer extends EntityRenderer<CannonEntity> {
 		this.rightWheel.pitch = -wheelAngle;
 		this.cannon.pitch = (entity.getPitch(tickDelta) + 90) * MathHelper.RADIANS_PER_DEGREE;
 
-		boolean renderCannon = (entity.getPrimaryPassenger() != MinecraftClient.getInstance().player) ||
+		boolean renderCannon = (entity.getFirstPassenger() != MinecraftClient.getInstance().player) ||
 				MinecraftClient.getInstance().gameRenderer.getCamera().isThirdPerson();
 
 		this.cannon.visible = renderCannon;

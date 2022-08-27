@@ -1,14 +1,13 @@
 package foundationgames.blasttravel.mixin;
 
 import foundationgames.blasttravel.entity.CannonPlayerDamageSource;
+import foundationgames.blasttravel.util.BTNetworking;
 import foundationgames.blasttravel.util.PlayerEntityDuck;
 import net.minecraft.entity.EntityDimensions;
 import net.minecraft.entity.EntityPose;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.damage.DamageSource;
 import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.sound.SoundCategory;
-import net.minecraft.sound.SoundEvents;
 import net.minecraft.util.TypeFilter;
 import net.minecraft.util.math.MathHelper;
 import net.minecraft.util.math.Vec3d;
@@ -27,6 +26,8 @@ public class PlayerEntityMixin implements PlayerEntityDuck {
 
 	private boolean blasttravel$inCannonFlight = false;
 	private boolean blasttravel$cancelFallDamage = false;
+
+	private int blasttravel$ticksFlying = 0;
 
 	@Inject(method = "tick", at = @At("HEAD"))
 	private void blasttravel$beginTick(CallbackInfo ci) {
@@ -49,13 +50,16 @@ public class PlayerEntityMixin implements PlayerEntityDuck {
 				}
 			}
 
-			if ((self.isOnGround() || self.isFallFlying() || self.getAbilities().flying || self.isSubmergedInWater())) {
+			if (self.isMainPlayer() &&
+					this.blasttravel$ticksFlying > 4 &&
+					(self.isOnGround() || self.isFallFlying() || self.getAbilities().flying || self.isSubmergedInWater())) {
 				this.blasttravel$setCannonFlight(false);
-				if (self.isOnGround()) {
-					self.world.playSound(null, self.getX(), self.getY(), self.getZ(),
-							SoundEvents.ENTITY_GENERIC_SMALL_FALL, SoundCategory.PLAYERS, 1, 0.78f);
-				}
+				BTNetworking.c2sStopCannonFlight(self.isOnGround());
 			}
+
+			this.blasttravel$ticksFlying++;
+		} else {
+			this.blasttravel$ticksFlying = 0;
 		}
 
 		if (!self.isMainPlayer()) {

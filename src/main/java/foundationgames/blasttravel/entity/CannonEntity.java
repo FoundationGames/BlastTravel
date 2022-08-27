@@ -14,6 +14,7 @@ import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.network.AbstractClientPlayerEntity;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityType;
+import net.minecraft.entity.MovementType;
 import net.minecraft.entity.data.DataTracker;
 import net.minecraft.entity.data.TrackedData;
 import net.minecraft.entity.data.TrackedDataHandlerRegistry;
@@ -69,6 +70,11 @@ public class CannonEntity extends Entity {
 
 	private int animation = 0;
 
+	private double targetX;
+	private double targetY;
+	private double targetZ;
+	private int targetTicks;
+
 	private final SimpleInventory inventory = new SimpleInventory(3) {
 		@Override
 		public void setStack(int slot, ItemStack stack) {
@@ -93,7 +99,7 @@ public class CannonEntity extends Entity {
 
 		super.tick();
 
-		if (!this.chained && this.getPrimaryPassenger() instanceof PlayerEntity player) {
+		if (!this.chained && this.getFirstPassenger() instanceof PlayerEntity player) {
 			this.setYaw(player.getHeadYaw());
 			this.setPitch(player.getPitch());
 		}
@@ -116,6 +122,8 @@ public class CannonEntity extends Entity {
 				MinecraftClient.getInstance().particleManager.addParticle(ParticleTypes.SMOKE,
 						pos.x, pos.y, pos.z, 0, 0, 0);
 			}
+
+			this.positionTrackTick();
 		} else {
 			boolean hasPower = this.world.getReceivedRedstonePower(this.getBlockPos()) > 0 ||
 					this.world.getReceivedRedstonePower(this.getBlockPos().down()) > 0;
@@ -125,6 +133,9 @@ public class CannonEntity extends Entity {
 				}
 				this.powered = hasPower;
 			}
+
+			this.movementTick();
+			this.move(MovementType.SELF, this.getVelocity());
 		}
 	}
 
@@ -146,7 +157,7 @@ public class CannonEntity extends Entity {
 
 	@Override
 	public ActionResult interact(PlayerEntity player, Hand hand) {
-		if (player == this.getPrimaryPassenger()) {
+		if (player == this.getFirstPassenger()) {
 			return super.interact(player, hand);
 		}
 
@@ -181,7 +192,7 @@ public class CannonEntity extends Entity {
 
 	@Override
 	public boolean handleAttack(Entity attacker) {
-		if (attacker instanceof PlayerEntity player && player != this.getPrimaryPassenger()) {
+		if (attacker instanceof PlayerEntity player && player != this.getFirstPassenger()) {
 			if (player.canModifyBlocks() &&
 					(player.isCreative() || player.getStackInHand(Hand.MAIN_HAND).getItem() instanceof PickaxeItem)) {
 				if (!this.world.isClient()) {
@@ -207,9 +218,37 @@ public class CannonEntity extends Entity {
 
 	@Override
 	public void updateTrackedPositionAndAngles(double x, double y, double z, float yaw, float pitch, int interpolationSteps, boolean interpolate) {
-		if (!this.world.isClient() && !this.hasPassengers()) {
-			super.updateTrackedPositionAndAngles(x, y, z, yaw, pitch, interpolationSteps, interpolate);
+		if (!this.world.isClient()) {
+			this.setPosition(x, y, z);
+
+			if (!this.hasPassengers()) {
+				this.setRotation(yaw, pitch);
+			}
+		} else {
+			this.targetX = x;
+			this.targetY = y;
+			this.targetZ = z;
+			this.targetTicks = this.getType().getTrackTickInterval();
 		}
+	}
+
+	private void positionTrackTick() {
+		if (this.targetTicks > 0) {
+			this.setPosition(
+					this.getX() + (this.targetX - this.getX()) / (double)this.targetTicks,
+					this.getY() + (this.targetY - this.getY()) / (double)this.targetTicks,
+					this.getZ() + (this.targetZ - this.getZ()) / (double)this.targetTicks
+			);
+
+			this.targetTicks--;
+		}
+	}
+
+	private void movementTick() {
+		var vel = this.getVelocity();
+
+		this.setVelocity(new Vec3d(vel.x * 0.9, this.isOnGround() ? 0 : Math.max(vel.y - 0.07, -0.7), vel.z * 0.9));
+		this.velocityModified = true;
 	}
 
 	public ItemStack getBehaviorStack() {
@@ -235,10 +274,10 @@ public class CannonEntity extends Entity {
 			if (gunpowder.isOf(Items.GUNPOWDER) && gunpowder.getCount() > 0) {
 				PlayerEntity firedPlayer = null;
 				var behaviorStack = this.getBehaviorStack();
-				var vel = getRotationVector().multiply(Math.sqrt(gunpowder.getCount()) * 0.6);
+				var vel = getVelocity().add(getRotationVector().multiply(Math.sqrt(gunpowder.getCount()) * 0.6));
 
 				this.getBehavior().onFired(this, behaviorStack, vel);
-				if (this.getPrimaryPassenger() instanceof PlayerEntity player) {
+				if (this.getFirstPassenger() instanceof PlayerEntity player) {
 					player.stopRiding();
 					player.setVelocity(vel);
 					((PlayerEntityDuck)player).blasttravel$setCannonFlight(true);
@@ -252,7 +291,7 @@ public class CannonEntity extends Entity {
 
 				this.updateStateFromInventory();
 			} else {
-				if (this.getPrimaryPassenger() instanceof PlayerEntity player) {
+				if (this.getFirstPassenger() instanceof PlayerEntity player) {
 					player.stopRiding();
 					player.sendMessage(NO_GUNPOWDER_DIALOG, true);
 				}
@@ -327,7 +366,7 @@ public class CannonEntity extends Entity {
 
 	@Environment(EnvType.CLIENT)
 	public @Nullable AbstractClientPlayerEntity getClientPlayer() {
-		return this.getPrimaryPassenger() instanceof AbstractClientPlayerEntity player ? player : null;
+		return this.getFirstPassenger() instanceof AbstractClientPlayerEntity player ? player : null;
 	}
 
 	public CannonBehavior getBehavior() {
@@ -354,12 +393,6 @@ public class CannonEntity extends Entity {
 		return new ItemStack(BlastTravel.CANNON_ITEM);
 	}
 
-	@Nullable
-	@Override
-	public Entity getPrimaryPassenger() {
-		return this.getFirstPassenger();
-	}
-
 	@Override
 	public boolean collides() {
 		return !this.isRemoved();
@@ -378,7 +411,7 @@ public class CannonEntity extends Entity {
 	@Override
 	public double getMountedHeightOffset() {
 		if (this.hasPassengers()) {
-			var passenger = this.getPrimaryPassenger();
+			var passenger = this.getFirstPassenger();
 			return (-passenger.getHeightOffset() - passenger.getEyeHeight(passenger.getPose())) + 0.75f;
 		}
 		return super.getMountedHeightOffset();
